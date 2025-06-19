@@ -1,12 +1,12 @@
 {
     "name": "conflictura",
-    "preductname": "Conflictura Launcher",
+    "preductname": "Nw",
     "version": "3.2.9",
     "description": "Conflictura modded server launcher",
     "main": "src/app.js",
     "author": "Riptiaz/Boulldogo/Vexato/Luuxis",
     "env": "azuriom",
-    "settings": "https://conflictura.eu",
+    "settings": "https://nationsofworld.web.boxtoplay.com/",
     "scripts": {
         "start": "cross-env-shell NODE_ENV=dev electron .",
         "build": "node build.js --obf=true --build=platform",
