@@ -1,12 +1,11 @@
 {
     "name": "NationsOfWorld",
     "preductname": "NationsOfWorld: Résurgence",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "description": "Launcher officiel de NationsOfWorld",
     "main": "src/app.js",
     "author": "Starbyte-Studio. ink",
     "env": "azuriom",
-    "key_apiextender": "EaRZFxYtZjYZ3CpVp7yp2zhUxUUhxwVF",
     "settings": "https://nationsofworld.web.boxtoplay.com/",
     "scripts": {
         "start": "cross-env-shell NODE_ENV=dev electron .",

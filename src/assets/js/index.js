@@ -42,7 +42,7 @@ class Splash {
         this.splashMessage.textContent = splash.message;
         this.splashAuthor.children[0].textContent = "@" + splash.author;
         })
-
+        
         document.getElementById('splash-message').textContent = t('welcome_message');
         document.getElementById('splash-author').textContent = t('developed_by');
         document.getElementById('update-message').textContent = t('checking_updates');
@@ -67,37 +67,14 @@ class Splash {
      * @returns {Promise<void>}
      */
     async maintenanceCheck() {
-        if (dev) {
-            console.log('[Launcher] - Mode développement activé passage direct au launcher');
-            return this.startLauncher();
-        }
-
-        try {
-            const azauth = this.getAzAuthUrl();
-            const response = await fetch(`${azauth}api/apiextender`, {
-                method: 'GET',
-                headers: {
-                    'API-Key': 'EaRZFxYtZjYZ3CpVp7yp2zhUxUUhxwVF'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.maintenance === "1") {
-                console.log('[Launcher] Mode maintenance détecté - arrêt du launcher');
-                return this.shutdown("Le launcher est actuellement en maintenance,<br>veuillez réessayer ultérieurement.");
-            } else {
-                console.log('Launcher] Pas de maintenance - vérification des mises à jour');
-                return this.checkUpdate();
-            }
-        } catch (e) {
-            console.log('[Launcher] Erreur de connexion - arrêt du launcher');
+        if (dev) return this.startLauncher();
+        config.GetConfig().then(res => {
+            if (res.maintenance) return this.shutdown(res.maintenance_message);
+            else this.checkUpdate();
+        }).catch(e => {
+            console.error(e);
             return this.shutdown("Aucune connexion internet détectée,<br>veuillez réessayer ultérieurement.");
-        }
+        })
     }
 
     /**
@@ -142,19 +119,12 @@ class Splash {
      * @returns {void}
      */
     shutdown(text) {
-        console.log('Shutdown appelé avec:', text);
         this.setStatus(`${text}<br>Arrêt dans 5s`);
         let i = 4;
-        const shutdownInterval = setInterval(() => {
+        setInterval(() => {
             this.setStatus(`${text}<br>Arrêt dans ${i--}s`);
-            if (i < 0) {
-                clearInterval(shutdownInterval);
-                ipcRenderer.send('update-window-close');
-            }
+            if (i < 0) ipcRenderer.send('update-window-close');
         }, 1000);
-        
-        // Empêcher toute autre exécution
-        return false;
     }
 
     /**
@@ -186,20 +156,6 @@ class Splash {
     setProgress(value, max) {
         this.progress.value = value;
         this.progress.max = max;
-    }
-
-    /**
-     * Récupère l'URL de base pour AzAuth
-     * @method getAzAuthUrl
-     * @returns {string} L'URL de base
-     */
-    getAzAuthUrl() {
-        const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
-        return pkg.env === 'azuriom' 
-            ? baseUrl 
-            : this.config.azauth.endsWith('/') 
-            ? this.config.azauth 
-            : `${this.config.azauth}/`;
     }
 }
 
