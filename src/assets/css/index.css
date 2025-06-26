@@ -1,10 +1,57 @@
+
 @import "font.css";
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(40, 255, 21, 0.37);
+  --primary-color: #00bd7a;
+  --text-color: #E1E1E1;
+}
+
 body {
-    background-color: #000000;
-    font-family: "Poppins";
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    font-family: "Poppins", sans-serif;
     letter-spacing: 0px;
     -webkit-app-region: drag;
     user-select: none;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    transition: all 1s ease-in-out;
+    animation: fadeInBackground 1.2s ease-out;
+}
+
+@keyframes fadeInBackground {
+  0% {
+    opacity: 0;
+    background: #000;
+  }
+  100% {
+    opacity: 1;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  }
+}
+
+#splash {
+    transition: all 1.5s ease-in-out;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+}
+
+#splash.expanding {
+    transform: scale(1.2);
+    opacity: 0.8;
+}
+
+#splash.fade-out {
+    opacity: 0;
+    transform: scale(1.5);
 }
 
 img {
@@ -14,13 +61,23 @@ img {
 
 .splash {
     position: absolute;
-    top: 180px;
+    top: 50%;
     left: 50%;
-    transform: translate(-50%);
-    width: 140px;
-    height: 140px;
-    transition: opacity .3s, top 1.5s;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    transition: all 0.5s ease;
     opacity: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 15px;
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .splash.opacity {
@@ -28,19 +85,28 @@ img {
 }
 
 .splash.translate {
-    top: 129px;
+    transform: translate(-50%, -60%);
+}
+
+.splash img {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+    border-radius: 10px;
+    filter: drop-shadow(0 4px 15px rgba(0, 189, 122, 0.3));
 }
 
 .splash-message {
     position: absolute;
-    top: 289px;
-    left: 0px;
-    width: 400px;
-    font: normal normal bold 19px/29px Poppins;
+    top: calc(50% + 100px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 350px;
+    font: normal normal bold 18px/26px Poppins;
     text-align: center;
     letter-spacing: 0px;
-    transition: opacity 1.5s;
-    color: rgb(255, 255, 255);
+    transition: all 0.8s ease;
+    color: var(--text-color);
     opacity: 0;
 }
 
@@ -50,18 +116,20 @@ img {
 
 .splash-author {
     position: absolute;
-    top: 326px;
-    left: 0px;
-    width: 400px;
+    top: calc(50% + 140px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 250px;
     text-align: center;
-    transition: opacity 1.5s;
-    font: normal normal normal 9px/13px Poppins;
-    color: rgb(255, 255, 255);
+    transition: all 0.8s ease;
+    font: normal normal normal 11px/16px Poppins;
+    color: var(--text-color);
     opacity: 0;
 }
 
 .splash-author .author {
-    font: normal normal bold 9px/13px Poppins;
+    font: normal normal bold 11px/16px Poppins;
+    color: var(--primary-color);
 }
 
 .splash-author.opacity {
@@ -70,13 +138,14 @@ img {
 
 .message {
     position: absolute;
-    top: 347px;
-    left: 0px;
-    width: 400px;
+    top: calc(50% + 170px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
     text-align: center;
-    transition: opacity 1.5s;
-    font: normal normal bold 18px/27px Poppins;
-    color: rgb(255, 255, 255);
+    transition: all 0.8s ease;
+    font: normal normal bold 14px/20px Poppins;
+    color: var(--text-color);
     opacity: 0;
 }
 
@@ -86,13 +155,15 @@ img {
 
 progress {
     position: absolute;
-    top: 410px;
-    left: 106px;
-    width: 189px;
-    height: 10px;
+    top: calc(50% + 210px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    height: 8px;
     appearance: none;
-    transition: opacity .2s;
+    transition: all 0.5s ease;
     opacity: 0;
+    border-radius: 8px;
 }
 
 progress.show {
@@ -100,11 +171,47 @@ progress.show {
 }
 
 progress::-webkit-progress-bar {
-    background-color: rgb(255, 255, 255);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
+    overflow: hidden;
 }
 
 progress::-webkit-progress-value {
-    background-color: rgb(0, 255, 55);
+    background: linear-gradient(90deg, var(--primary-color), #009c65);
     border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 189, 122, 0.5);
+    transition: all 0.3s ease;
+}
+
+/* Animation subtile pour le logo */
+@keyframes float {
+    0%, 100% {
+        transform: translate(-50%, -60%) translateY(0px);
+    }
+    50% {
+        transform: translate(-50%, -60%) translateY(-5px);
+    }
+}
+
+.splash.translate {
+    animation: float 4s ease-in-out infinite;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .splash-message,
+    .message {
+        width: 90%;
+        max-width: 350px;
+    }
+    
+    .splash-author {
+        width: 80%;
+        max-width: 250px;
+    }
+    
+    progress {
+        width: 80%;
+        max-width: 250px;
+    }
 }

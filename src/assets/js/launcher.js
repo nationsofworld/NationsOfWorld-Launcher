@@ -16,11 +16,22 @@ import { config, logger, changePanel, database, addAccount, accountSelect, t } f
 import Login from './panels/login.js';
 import Home from './panels/home.js';
 import Settings from './panels/settings.js';
+import { initOthers } from './utils/sharedFunctions.js';
 
 const settings_url = pkg.user ? `${pkg.settings}/${pkg.user}` : pkg.settings;
 const urlPattern = /^(https?:\/\/)/;
 
+/**
+ * Classe principale du launcher
+ * @class Launcher
+ */
 class Launcher {
+    /**
+     * Initialise le launcher
+     * @async
+     * @method init
+     * @returns {Promise<void>}
+     */
     async init() {
         this.initLog();
         console.log("Initializing Launcher...");
@@ -33,6 +44,11 @@ class Launcher {
         this.initDiscordRPC();
     }
 
+    /**
+     * Initialise le système de logs et les raccourcis clavier
+     * @method initLog
+     * @returns {void}
+     */
     initLog() {
         document.addEventListener("keydown", (e) => {
             if ((e.ctrlKey && e.shiftKey && e.keyCode === 73) || e.keyCode === 123) {
@@ -42,6 +58,11 @@ class Launcher {
         new logger('Launcher', '#7289da');
     }
 
+    /**
+     * Initialise le Rich Presence Discord
+     * @method initDiscordRPC
+     * @returns {void}
+     */
     initDiscordRPC() {
         if (this.config.rpc_activation) {
             const rpc = new DiscordRPC.Client({ transport: 'ipc' });
@@ -64,6 +85,11 @@ class Launcher {
         }
     }
 
+    /**
+     * Initialise la barre de titre de la fenêtre
+     * @method initFrame
+     * @returns {void}
+     */
     initFrame() {
         console.log("Initializing Frame...");
         document.querySelector(".frame").classList.toggle("hide");
@@ -87,6 +113,12 @@ class Launcher {
         });
     }
 
+    /**
+     * Crée les panneaux de l'interface
+     * @method createPanels
+     * @param {...Function} panels - Les classes des panneaux à créer
+     * @returns {void}
+     */
     createPanels(...panels) {
         const panelsElem = document.querySelector(".panels");
         for (const panel of panels) {
@@ -99,6 +131,12 @@ class Launcher {
         }
     }
 
+    /**
+     * Récupère et initialise les comptes
+     * @async
+     * @method getAccounts
+     * @returns {Promise<void>}
+     */
     async getAccounts() {
         const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
         const AZAuth = new AZauth(this.getAzAuthUrl());
@@ -172,6 +210,12 @@ class Launcher {
         document.querySelector(".preload-content").style.display = "none";
     }
 
+    /**
+     * Rafraîchit les données affichées
+     * @async
+     * @method refreshData
+     * @returns {Promise<void>}
+     */
     async refreshData() {
         document.querySelector('.player-role').innerHTML = '';
         document.querySelector('.player-monnaie').innerHTML = '';
@@ -179,6 +223,12 @@ class Launcher {
         await this.initOthers();
     }
 
+    /**
+     * Initialise l'aperçu du skin du joueur
+     * @async
+     * @method initPreviewSkin
+     * @returns {Promise<void>}
+     */
     async initPreviewSkin() {
         console.log('initPreviewSkin called');
         const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
@@ -187,72 +237,24 @@ class Launcher {
         const account = (await this.database.get(uuid.selected, 'accounts')).value;
 
         document.querySelector('.player-skin-title').innerHTML = `Skin de ${account.name}`;
-        document.querySelector('.skin-renderer-settings').src = `${azauth}skin3d/3d-api/skin-api/${account.name}`;
+        document.querySelector('.skin-renderer-settings').src = `${azauth}skin3d/3d-api/skin-api/${account.name}/300/400`;
     }
 
+    /**
+     * Initialise les autres fonctionnalités
+     * @async
+     * @method initOthers
+     * @returns {Promise<void>}
+     */
     async initOthers() {
-        const uuid = (await this.database.get('1234', 'accounts-selected')).value;
-        const account = (await this.database.get(uuid.selected, 'accounts')).value;
-
-        this.updateRole(account);
-        this.updateMoney(account);
-        this.updateWhitelist(account);
-        this.updateBackground(account);
+        await initOthers(this.database, this.config);
     }
 
-    updateRole(account) {
-        if (this.config.role && account.user_info.role) {
-            const blockRole = document.createElement("div");
-            blockRole.innerHTML = `<div>${t('grade')}: ${account.user_info.role.name}</div>`;
-            document.querySelector('.player-role').appendChild(blockRole);
-        } else {
-            document.querySelector(".player-role").style.display = "none";
-        }
-    }
-
-    updateMoney(account) {
-        if (this.config.money) {
-            const blockMonnaie = document.createElement("div");
-            blockMonnaie.innerHTML = `<div>${account.user_info.monnaie} pts</div>`;
-            document.querySelector('.player-monnaie').appendChild(blockMonnaie);
-        } else {
-            document.querySelector(".player-monnaie").style.display = "none";
-        }
-    }
-
-    updateWhitelist(account) {
-        const playBtn = document.querySelector(".play-btn");
-        if (this.config.whitelist_activate && 
-            (!this.config.whitelist.includes(account.name) &&
-             !this.config.whitelist_roles.includes(account.user_info.role.name))) {
-            playBtn.style.backgroundColor = "#696969";
-            playBtn.style.pointerEvents = "none";
-            playBtn.style.boxShadow = "none";
-            playBtn.textContent = t('unavailable');
-        } else {
-            playBtn.style.backgroundColor = "#00bd7a";
-            playBtn.style.pointerEvents = "auto";
-            playBtn.style.boxShadow = "2px 2px 5px rgba(0, 0, 0, 0.3)";
-            playBtn.textContent = t('play');
-        }
-    }
-
-    updateBackground(account) {
-        if (this.config.role_data) {
-            for (const roleKey in this.config.role_data) {
-                if (this.config.role_data.hasOwnProperty(roleKey)) {
-                    const role = this.config.role_data[roleKey];
-                    if (account.user_info.role.name === role.name) {
-                        const backgroundUrl = role.background;
-                        document.body.style.background = urlPattern.test(backgroundUrl) 
-                            ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${backgroundUrl}) black no-repeat center center scroll`
-                            : `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url("../src/assets/images/background/light.jpg") black no-repeat center center scroll`;
-                        break;
-                    }
-                }
-            }
-        }
-    }
+    /**
+     * Récupère l'URL de base pour AzAuth
+     * @method getAzAuthUrl
+     * @returns {string} L'URL de base pour AzAuth
+     */
     getAzAuthUrl() {
         const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
         return pkg.env === 'azuriom' 

@@ -4,7 +4,8 @@
 
 'use strict';
 
-import { database, changePanel, accountSelect, Slider, t } from '../utils.js';
+import { database, changePanel, accountSelect, Slider, t, headplayer} from '../utils.js';
+import { initOthers } from '../utils/sharedFunctions.js';
 const dataDirectory = process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME);
 
 const os = require('os');
@@ -15,27 +16,42 @@ const pkg = require('../package.json');
 const { ipcRenderer, shell } = require('electron');
 const settings_url = pkg.user ? `${pkg.settings}/${pkg.user}` : pkg.settings;
 
+/**
+ * Classe gérant le panneau des paramètres du launcher
+ * @class Settings
+ */
 class Settings {
+    /** @type {string} L'identifiant du panneau */
     static id = "settings";
 
+    /**
+     * Initialise le panneau des paramètres
+     * @async
+     * @method init
+     * @param {Object} config - La configuration du launcher
+     * @returns {Promise<void>}
+     */
     async init(config) {
         this.config = config;
         this.database = await new database().init();
+        window.settings = this;
         this.initSettingsDefault();
         this.initTab();
         this.initAccount();
         this.initRam();
-        this.initLauncherSettings();
-        this.updateModsConfig();
+        this.initLauncherSettings();        this.updateModsConfig();
         this.initOptionalMods();
-        this.headplayer();
+        await this.headplayer();
 
-
-        document.getElementById('uploadSkinButton').addEventListener('click', async () => {
-            await this.selectFile();
-        });
+        this.initDragAndDrop();
     }
 
+    /**
+     * Rafraîchit les données du panneau
+     * @async
+     * @method refreshData
+     * @returns {Promise<void>}
+     */
     async refreshData() {
         document.querySelector('.player-role').innerHTML = '';
         document.querySelector('.player-monnaie').innerHTML = '';
@@ -44,16 +60,12 @@ class Settings {
         await this.updateAccountImage();
     }
 
-    async headplayer() {
-        const uuid = (await this.database.get('1234', 'accounts-selected')).value;
-        const account = (await this.database.get(uuid.selected, 'accounts')).value;
-        const pseudo = account.name;
-        const azauth = this.getAzAuthUrl();
-        const timestamp = new Date().getTime();
-        const skin_url = `${azauth}api/skin-api/avatars/face/${pseudo}/?t=${timestamp}`;
-        document.querySelector(".player-head").style.backgroundImage = `url(${skin_url})`;
-    }
-
+    /**
+     * Met à jour l'image du compte sélectionné
+     * @async
+     * @method updateAccountImage
+     * @returns {Promise<void>}
+     */
     async updateAccountImage() {
         const uuid = (await this.database.get('1234', 'accounts-selected')).value;
         const account = (await this.database.get(uuid.selected, 'accounts')).value;
@@ -73,71 +85,21 @@ class Settings {
         }
     }
 
+    /**
+     * Initialise les fonctionnalités supplémentaires
+     * @async
+     * @method initOthers
+     * @returns {Promise<void>}
+     */
     async initOthers() {
-        const uuid = (await this.database.get('1234', 'accounts-selected')).value;
-        const account = (await this.database.get(uuid.selected, 'accounts')).value;
-
-        this.updateRole(account);
-        this.updateMoney(account);
-        this.updateWhitelist(account);
-        this.updateBackground(account);
+        await initOthers(this.database, this.config);
     }
 
-    updateRole(account) {
-        if (this.config.role && account.user_info.role) {
-            const blockRole = document.createElement("div");
-            blockRole.innerHTML = `<div>${t('grade')}: ${account.user_info.role.name}</div>`;
-            document.querySelector('.player-role').appendChild(blockRole);
-        } else {
-            document.querySelector(".player-role").style.display = "none";
-        }
-    }
-
-    updateMoney(account) {
-        if (this.config.money) {
-            const blockMonnaie = document.createElement("div");
-            blockMonnaie.innerHTML = `<div>${account.user_info.monnaie} pts</div>`;
-            document.querySelector('.player-monnaie').appendChild(blockMonnaie);
-        } else {
-            document.querySelector(".player-monnaie").style.display = "none";
-        }
-    }
-
-    updateWhitelist(account) {
-        const playBtn = document.querySelector(".play-btn");
-        if (this.config.whitelist_activate && 
-            (!this.config.whitelist.includes(account.name) &&
-             !this.config.whitelist_roles.includes(account.user_info.role.name))) {
-            playBtn.style.backgroundColor = "#696969";
-            playBtn.style.pointerEvents = "none";
-            playBtn.style.boxShadow = "none";
-            playBtn.textContent = t('unavailable');
-        } else {
-            playBtn.style.backgroundColor = "#00bd7a";
-            playBtn.style.pointerEvents = "auto";
-            playBtn.style.boxShadow = "2px 2px 5px rgba(0, 0, 0, 0.3)";
-            playBtn.textContent = t('play');
-        }
-    }
-
-    updateBackground(account) {
-        if (this.config.role_data) {
-            for (const roleKey in this.config.role_data) {
-                if (this.config.role_data.hasOwnProperty(roleKey)) {
-                    const role = this.config.role_data[roleKey];
-                    if (account.user_info.role.name === role.name) {
-                        const backgroundUrl = role.background;
-                        const urlPattern = /^(https?:\/\/)/;
-                        document.body.style.background = urlPattern.test(backgroundUrl) 
-                            ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${backgroundUrl}) black no-repeat center center scroll`
-                            : `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url("../src/assets/images/background/light.jpg") black no-repeat center center scroll`;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
+    /**
+     * Initialise la gestion des comptes
+     * @method initAccount
+     * @returns {void}
+     */
     initAccount() {
         document.querySelector('.accounts').addEventListener('click', async (e) => {
             const uuid = e.target.id;
@@ -151,6 +113,13 @@ class Settings {
             if (e.target.classList.contains("account-delete")) {
                 this.database.delete(e.path[1].id, 'accounts');
                 document.querySelector('.accounts').removeChild(e.path[1]);
+
+                const remainingAccounts = await this.database.getAll('accounts');
+                const cancelButtons = document.querySelectorAll('.cancel');
+                cancelButtons.forEach(button => {
+                    button.style.display = remainingAccounts.length > 0 ? 'block' : 'none';
+                });
+
                 if (!document.querySelector('.accounts').children.length) {
                     changePanel("login");
                     return;
@@ -165,11 +134,20 @@ class Settings {
         });
 
         document.querySelector('.add-account').addEventListener('click', () => {
-            document.querySelector(".cancel-login").style.display = "contents";
+            const cancelLoginElement = document.querySelector(".cancel-login");
+            if (cancelLoginElement) {
+                cancelLoginElement.style.display = "contents";
+            }
             changePanel("login");
         });
     }
 
+    /**
+     * Initialise la gestion de la RAM
+     * @async
+     * @method initRam
+     * @returns {Promise<void>}
+     */
     async initRam() {
         const ramDatabase = (await this.database.get('1234', 'ram'))?.value;
         const totalMem = Math.trunc(os.totalmem() / 1073741824 * 10) / 10;
@@ -197,6 +175,12 @@ class Settings {
         });
     }
 
+    /**
+     * Met à jour la configuration des mods
+     * @async
+     * @method updateModsConfig
+     * @returns {Promise<void>}
+     */
     async updateModsConfig() {
         const modsDir = path.join(`${dataDirectory}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}`, 'mods');
         const launcherConfigDir = path.join(`${dataDirectory}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}`, 'launcher_config');
@@ -239,6 +223,12 @@ class Settings {
         fs.writeFileSync(modsConfigFile, JSON.stringify(localModsConfig, null, 2));
     }
 
+    /**
+     * Initialise les mods optionnels
+     * @async
+     * @method initOptionalMods
+     * @returns {Promise<void>}
+     */
     async initOptionalMods() {
         const modsDir = path.join(`${dataDirectory}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}`, 'mods');
         const launcherConfigDir = path.join(`${dataDirectory}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}`, 'launcher_config');
@@ -259,6 +249,12 @@ class Settings {
         }
     }
 
+    /**
+     * Affiche un message lorsque aucun mod n'est trouvé
+     * @method displayEmptyModsMessage
+     * @param {HTMLElement} modsListElement - L'élément de liste des mods
+     * @returns {void}
+     */
     displayEmptyModsMessage(modsListElement) {
         const modElement = document.createElement('div');
         modElement.innerHTML = `
@@ -268,6 +264,13 @@ class Settings {
         modsListElement.appendChild(modElement);
     }
 
+    /**
+     * Crée la configuration des mods
+     * @async
+     * @method createModsConfig
+     * @param {string} modsConfigFile - Le chemin du fichier de configuration
+     * @returns {Promise<void>}
+     */
     async createModsConfig(modsConfigFile) {
         const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
         const response = await fetch(pkg.env === 'azuriom' ? `${baseUrl}api/centralcorp/mods` : `${baseUrl}utils/mods`);
@@ -281,6 +284,15 @@ class Settings {
         fs.writeFileSync(modsConfigFile, JSON.stringify(modsConfig, null, 2));
     }
 
+    /**
+     * Affiche la liste des mods
+     * @async
+     * @method displayMods
+     * @param {string} modsConfigFile - Le chemin du fichier de configuration
+     * @param {string} modsDir - Le répertoire des mods
+     * @param {HTMLElement} modsListElement - L'élément de liste des mods
+     * @returns {Promise<void>}
+     */
     async displayMods(modsConfigFile, modsDir, modsListElement) {
         let modsConfig;
 
@@ -356,6 +368,17 @@ class Settings {
         });
     }
 
+    /**
+     * Active ou désactive un mod
+     * @async
+     * @method toggleMod
+     * @param {string} mod - Le nom du mod
+     * @param {boolean} enabled - Si le mod doit être activé
+     * @param {Object} modsConfig - La configuration des mods
+     * @param {string} modsDir - Le répertoire des mods
+     * @param {string} modsConfigFile - Le chemin du fichier de configuration
+     * @returns {Promise<void>}
+     */
     async toggleMod(mod, enabled, modsConfig, modsDir, modsConfigFile) {
         const modFiles = fs.readdirSync(modsDir).filter(file => file.startsWith(mod) && (file.endsWith('.jar') || file.endsWith('.jar-disable')));
 
@@ -371,6 +394,12 @@ class Settings {
         }
     }
 
+    /**
+     * Sélectionne un fichier pour le skin
+     * @async
+     * @method selectFile
+     * @returns {Promise<void>}
+     */
     async selectFile() {
         const input = document.getElementById('fileInput');
         input.click();
@@ -395,6 +424,13 @@ class Settings {
         };
     }
 
+    /**
+     * Traite le changement de skin
+     * @async
+     * @method processSkinChange
+     * @param {File} file - Le fichier du skin
+     * @returns {Promise<void>}
+     */
     async processSkinChange(file) {
         if (!file) {
             console.error('No file provided');
@@ -429,6 +465,12 @@ class Settings {
         xhr.send(formData);
     }
 
+    /**
+     * Initialise l'aperçu du skin
+     * @async
+     * @method initPreviewSkin
+     * @returns {Promise<void>}
+     */
     async initPreviewSkin() {
         console.log('initPreviewSkin called');
         const azauth = this.getAzAuthUrl();
@@ -440,17 +482,23 @@ class Settings {
 
         const skin = document.querySelector('.skin-renderer-settings');
         const cacheBuster = new Date().getTime();
-        const url = `${azauth}skin3d/3d-api/skin-api/${account.name}`;
+        const url = `${azauth}skin3d/3d-api/skin-api/${account.name}/300/400/`;
         skin.src = url;
     }
 
+    /**
+     * Initialise la résolution
+     * @async
+     * @method initResolution
+     * @returns {Promise<void>}
+     */
     async initResolution() {
         let resolutionDatabase = (await this.database.get('1234', 'screen'))?.value?.screen;
         let resolution = resolutionDatabase ? resolutionDatabase : { width: "1280", height: "720" };
-        
+
         let width = document.querySelector(".width-size");
         width.value = resolution.width;
-        
+
         let height = document.querySelector(".height-size");
         height.value = resolution.height;
 
@@ -458,13 +506,19 @@ class Settings {
         select.addEventListener("change", (event) => {
             let resolution = select.options[select.options.selectedIndex].value.split(" x ");
             select.options.selectedIndex = 0;
-            
+
             width.value = resolution[0];
             height.value = resolution[1];
             this.database.update({ uuid: "1234", screen: { width: resolution[0], height: resolution[1] } }, 'screen');
         });
     }
 
+    /**
+     * Initialise les paramètres du launcher
+     * @async
+     * @method initLauncherSettings
+     * @returns {Promise<void>}
+     */
     async initLauncherSettings() {
         let launcherDatabase = (await this.database.get('1234', 'launcher'))?.value;
         let settingsLauncher = {
@@ -517,6 +571,11 @@ class Settings {
         })
     }
 
+    /**
+     * Initialise les onglets
+     * @method initTab
+     * @returns {void}
+     */
     initTab() {
         let TabBtn = document.querySelectorAll('.tab-btn');
         let TabContent = document.querySelectorAll('.tabs-settings-content');
@@ -558,9 +617,14 @@ class Settings {
         document.getElementById('mods-title').textContent = t('optional_mods');
         document.getElementById('mods-info').innerHTML = t('mods_detailed_info');
         document.getElementById('skin-title').textContent = t('skin');
-        document.getElementById('uploadSkinButton').textContent = t('change_skin');
     }
 
+    /**
+     * Initialise les paramètres par défaut
+     * @async
+     * @method initSettingsDefault
+     * @returns {Promise<void>}
+     */
     async initSettingsDefault() {
         if (!(await this.database.getAll('accounts-selected')).length) {
             this.database.add({ uuid: "1234" }, 'accounts-selected')
@@ -592,7 +656,12 @@ class Settings {
         }
     }
 
-   getAzAuthUrl() {
+    /**
+     * Récupère l'URL de base pour AzAuth
+     * @method getAzAuthUrl
+     * @returns {string} L'URL de base
+     */
+    getAzAuthUrl() {
         const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
         return pkg.env === 'azuriom' 
             ? baseUrl 
@@ -600,5 +669,107 @@ class Settings {
             ? this.config.azauth 
             : `${this.config.azauth}/`;
     }
+
+    /**
+     * Met à jour l'affichage de la tête du joueur
+     * @async
+     * @method headplayer
+     * @returns {Promise<void>}
+     */
+    async headplayer() {
+        const uuid = (await this.database.get('1234', 'accounts-selected')).value;
+        const account = (await this.database.get(uuid.selected, 'accounts')).value;
+        headplayer(account.name);
+    }
+
+    /**
+     * Initialise le système de drag & drop
+     * @method initDragAndDrop
+     * @returns {void}
+     */
+    initDragAndDrop() {
+        const dragDropZone = document.getElementById('dragDropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        if (!dragDropZone || !fileInput) {
+            console.error('Drag drop zone or file input not found');
+            return;
+        }
+
+        dragDropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDropZone.classList.add('drag-over');
+        });
+
+        dragDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDropZone.classList.add('drag-over');
+        });
+
+        dragDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!dragDropZone.contains(e.relatedTarget)) {
+                dragDropZone.classList.remove('drag-over');
+            }
+        });
+
+        dragDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDropZone.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFileSelect(files[0]);
+            }
+        });
+
+        dragDropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.handleFileSelect(e.target.files[0]);
+            }
+        });
+    }
+
+    /**
+     * Gère la sélection d'un fichier
+     * @async
+     * @method handleFileSelect
+     * @param {File} file - Le fichier sélectionné
+     * @returns {Promise<void>}
+     */
+    async handleFileSelect(file) {
+        if (!file) return;
+        
+        if (file.type !== 'image/png') {
+            alert('Le fichier doit être une image PNG.');
+            return;
+        }
+
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        
+        img.onload = async () => {
+            if (img.width > 128 || img.height > 128) {
+                alert('L\'image ne doit pas dépasser 128x128 pixels.');
+                return;
+            }
+
+            await this.processSkinChange(file);
+        };
+    }
+
+    
 }
+
+// Référence globale pour les méthodes appelées depuis le HTML
+window.settings = null;
+
 export default Settings;

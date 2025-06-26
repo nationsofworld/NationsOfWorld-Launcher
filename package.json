@@ -1,18 +1,17 @@
 {
     "name": "NationsOfWorld",
     "preductname": "NationsOfWorld: Résurgence",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Launcher officiel de NationsOfWorld",
     "main": "src/app.js",
     "author": "Starbyte-Studio. ink",
     "env": "azuriom",
+    "key_apiextender": "EaRZFxYtZjYZ3CpVp7yp2zhUxUUhxwVF",
     "settings": "https://nationsofworld.web.boxtoplay.com/",
     "scripts": {
         "start": "cross-env-shell NODE_ENV=dev electron .",
-        "build": "node build.js --obf=true --build=platform",
-        "dev": "cross-env-shell DEV_TOOL=open nodemon --exec npm start",
-        "icon": "node build.js --icon=https://github.com/nationsofworld/NationsOfWorld-Launcher/master/src/assets/images/icon.png"
-
+        "build": "node build.js --build=platform",
+        "dev": "nodemon --exec npm start"
     },
     "license": "CC0",
     "nodemonConfig": {
@@ -22,18 +21,15 @@
         "discord-rpc": "^4.0.1",
         "electron-updater": "^6.1.8",
         "https": "^1.0.0",
-        "minecraft-java-core-azbetter": "^4.1.1",
+        "minecraft-java-core-azbetter": "^4.1.0",
         "node-fetch": "^2.6.7",
         "xml-js": "^1.6.11"
     },
     "devDependencies": {
         "cross-env": "^7.0.3",
         "electron": "^22.3.24",
-        "electron-builder": "^26.0.12",
-        "nodemon": "^3.1.9",
-        "png2icons": "^2.0.1",
-        "javascript-obfuscator": "^4.1.0",
-        "jimp": "^0.22.12"
+        "electron-builder": "^24.13.3",
+        "nodemon": "^3.1.9"
     },
     "repository": {
         "type": "git",

@@ -1,45 +1,69 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style class="bodyimg"></style>
 <div class="home-content">
-    <div class="bottom-bar-home">
-        <div class="player-head"></div>
-        <div class="player-role"></div>
-        <div class="player-monnaie"></div>
-        <button class="settings-btn icon-settings" id="settings-btn"></button>
-        <div class="play-element">
-            <button class="play-btn" id="play-btn"></button>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="player-head"></div>
+        </div>
+        <div class="sidebar-middle">
+            <div class="server-logo">
+                <img class="server-img"/>
+            </div>
+            <button class="play-btn-sidebar" id="play-btn">
+                <div class="play-icon"><i class="fa-solid fa-play"></i></div>
+                <div class="loading-spinner" style="display: none;"></div>
+            </button>
+        </div>
+        <div class="sidebar-bottom">
+            <div class="player-info">
+                <div class="player-details">
+                    <div class="player-role"></div>
+                    <div class="player-monnaie"></div>
+                </div>
+            </div>
+            <button class="settings-btn icon-settings" id="settings-btn"></button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Alert Banner -->
+        <div class="advert-banner" id="advert-banner" style="display:none;"></div>
+
+        <!-- Grade Display -->
+        <div class="grade-display" id="grade-display" style="display:none;">
+            <div class="grade-badge">
+                <div class="grade-icon">
+                    <span></span>
+                </div>
+                <div class="grade-info">
+                    <div class="grade-name"></div>
+                    <div class="grade-description"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="play-element" style="display: none;">
             <div class="download-content">
                 <div class="text-download" id="text-download"></div>
                 <progress value="0" max="0" class="progress-bar"></progress>
             </div>
         </div>
-    </div>
 
-    <!-- Bannière pour le message d'alerte -->
-    <div class="advert-banner" id="advert-banner" style="display:none;"></div>
-
-    <div class="body-home">
-        <div class="news-list"></div>
-        <div class="info-list">
-            <div class="info-item">
-                <div class="server">
-                    <img class="server-img"/>
-                    <div class="server-text">
-                        <div class="name" id="server-name"></div>
-                        <div class="desc" id="server-desc"></div>
-                    </div>
-                    <div class="etat-text">
-                        <div class="text" id="players-connected"></div>
-                        <div class="online off"></div>
-                    </div>
-                </div>
+        <div class="content-grid">
+            <!-- News Section -->
+            <div class="news-section">
+                <h2 class="section-header" id="news-title">                </h2>
+                <div class="news-list"></div>
             </div>
-            <div class="info-item">
+
+
+
+            <!-- Video Section -->
+            <div class="video-section">
+                <h2 class="section-header" id="video-title"></h2>
                 <div class="ytb">
-                    <div class="ytb-header">
-                        <div class="header-text">
-                            <div class="title-change" id="video-title"></div>
-                        </div>
-                    </div>
                     <div class="video">
                         <div class="youtube-thumbnail">
                             <img class="thumbnail-img" alt="YouTube Thumbnail" />
@@ -48,6 +72,17 @@
                         <div class="video-credits"></div>
                         <div class="icon-ytb ytb-btn" id="view-video-btn"></div>
                     </div>
+                </div>
+            </div>
+                        <!-- Server Status -->
+            <div class="server-status">
+                <div class="status-indicator">
+                    <div class="online-indicator"></div>
+                    <span class="status-text" id="server-status"></span>
+                </div>
+                <div class="players-count">
+                    <i class="players-icon">👥</i>
+                    <span id="players-count">0</span>
                 </div>
             </div>
         </div>

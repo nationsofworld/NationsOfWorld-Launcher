@@ -17,9 +17,22 @@ const settings_url = pkg.user ? `${pkg.settings}/${pkg.user}` : pkg.settings;
 const dataDirectory = process.env.APPDATA || (process.platform == 'darwin' ? `${process.env.HOME}/Library/Application Support` : process.env.HOME);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
+/**
+ * Classe gérant le panneau d'accueil du launcher
+ * @class Home
+ */
 class Home {
+    /** @type {string} L'identifiant du panneau */
     static id = "home";
 
+    /**
+     * Initialise le panneau d'accueil
+     * @async
+     * @method init
+     * @param {Object} config - La configuration du launcher
+     * @param {Array} news - Les actualités à afficher
+     * @returns {Promise<void>}
+     */
     async init(config, news) {
         this.database = await new database().init();
         this.config = config;
@@ -35,16 +48,26 @@ class Home {
         this.verifyModsBeforeLaunch();
     }
 
+    /**
+     * Définit les textes statiques du panneau
+     * @method setStaticTexts
+     * @returns {void}
+     */
     setStaticTexts() {
-        document.getElementById('play-btn').textContent = t('play');
         document.getElementById('text-download').textContent = t('verification');
-        document.getElementById('server-name').textContent = t('offline');
-        document.getElementById('server-desc').innerHTML = `<span class="red">${t('closed')}</span>`;
+        document.getElementById('server-status').textContent = t('offline');
         document.getElementById('video-title').textContent = t('community_video');
         document.getElementById('play-video-btn').innerHTML = '&#9658;';
         document.getElementById('view-video-btn').textContent = t('view_video');
+        document.getElementById('news-title').textContent = t('news');
     }
 
+    /**
+     * Initialise l'affichage des actualités
+     * @async
+     * @method initNews
+     * @returns {Promise<void>}
+     */
     async initNews() {
         const newsContainer = document.querySelector('.news-list');
         if (this.news) {
@@ -61,7 +84,33 @@ class Home {
         }
         this.setServerIcon();
     }
+    async initAdvert() {
+        const advertBanner = document.querySelector('.advert-banner');
+        if (this.config.alert_activate) {
+            const message = this.config.alert_msg;
+            const firstParagraph = message.split('</p>')[0] + '</p>';
+            const scrollingText = document.createElement('div');
+            scrollingText.classList.add('scrolling-text');
+            scrollingText.innerHTML = `${firstParagraph}`;
+            advertBanner.innerHTML = '';
+            advertBanner.appendChild(scrollingText);
+            scrollingText.classList.toggle('no-scroll', !this.config.alert_scroll);
+            advertBanner.style.display = 'block';
+        } else {
+            advertBanner.style.display = 'none';
+        }
+    }
 
+    /**
+     * Crée un bloc d'actualité
+     * @method createNewsBlock
+     * @param {HTMLElement} container - Le conteneur parent
+     * @param {string} title - Le titre de l'actualité
+     * @param {string} content - Le contenu de l'actualité
+     * @param {string} [author] - L'auteur de l'actualité
+     * @param {Object} [date] - La date de publication
+     * @returns {void}
+     */
     createNewsBlock(container, title, content, author = '', date = {}) {
         const blockNews = document.createElement('div');
         blockNews.classList.add('news-block', 'opacity-1');
@@ -81,6 +130,11 @@ class Home {
         container.appendChild(blockNews);
     }
 
+    /**
+     * Définit l'icône du serveur
+     * @method setServerIcon
+     * @returns {void}
+     */
     setServerIcon() {
         const serverImg = document.querySelector('.server-img');
         serverImg.setAttribute("src", this.config.server_icon);
@@ -89,16 +143,28 @@ class Home {
         }
     }
 
+    /**
+     * Initialise le système de lancement du jeu
+     * @async
+     * @method initLaunch
+     * @returns {Promise<void>}
+     */
     async initLaunch() {
-        document.querySelector('.play-btn').addEventListener('click', async () => {
+        document.querySelector('.play-btn-sidebar').addEventListener('click', async () => {
             await this.verifyModsBeforeLaunch();
             const opts = await this.getLaunchOptions();
-            const playBtn = document.querySelector('.play-btn');
+            const playBtn = document.querySelector('.play-btn-sidebar');
+            const playIcon = playBtn.querySelector('.play-icon');
+            const spinner = playBtn.querySelector('.loading-spinner');
             const info = document.querySelector(".text-download");
             const progressBar = document.querySelector(".progress-bar");
 
-            playBtn.style.display = "none";
-            info.style.display = "block";
+            // Show spinner and hide play icon
+            playBtn.classList.add('loading');
+            playBtn.disabled = true;
+            playIcon.style.display = 'none';
+            spinner.style.display = 'block';
+            
             launch.Launch(opts);
 
             const launcherSettings = (await this.database.get('1234', 'launcher')).value;
@@ -106,6 +172,12 @@ class Home {
         });
     }
 
+    /**
+     * Récupère les options de lancement
+     * @async
+     * @method getLaunchOptions
+     * @returns {Promise<Object>} Les options de lancement
+     */
     async getLaunchOptions() {
         const urlpkg = this.getBaseUrl();
         const uuid = (await this.database.get('1234', 'accounts-selected')).value;
@@ -136,7 +208,7 @@ class Home {
                 ...(Array.isArray(this.config.ignored) ? this.config.ignored : Object.values(this.config.ignored)),
                 "launcher_config",
             ],
-            
+
             java: this.config.java,
             memory: {
                 min: `${ram.ramMin * 1024}M`,
@@ -145,11 +217,26 @@ class Home {
         };
     }
 
+    /**
+     * Récupère l'URL de base pour les fichiers
+     * @method getBaseUrl
+     * @returns {string} L'URL de base
+     */
     getBaseUrl() {
         const baseUrl = settings_url.endsWith('/') ? settings_url : `${settings_url}/`;
         return pkg.env === 'azuriom' ? `${baseUrl}api/centralcorp/files` : `${baseUrl}data/`;
     }
 
+    /**
+     * Configure les écouteurs d'événements du lancement
+     * @method setupLaunchListeners
+     * @param {Object} launch - L'instance de lancement
+     * @param {HTMLElement} info - L'élément d'information
+     * @param {HTMLElement} progressBar - La barre de progression
+     * @param {HTMLElement} playBtn - Le bouton de jeu
+     * @param {Object} launcherSettings - Les paramètres du launcher
+     * @returns {void}
+     */
     setupLaunchListeners(launch, info, progressBar, playBtn, launcherSettings) {
         launch.on('extract', extract => console.log(extract));
         launch.on('progress', (progress, size) => this.updateProgressBar(progressBar, info, progress, size, t('download')));
@@ -162,6 +249,16 @@ class Home {
         launch.on('error', err => console.log(err));
     }
 
+    /**
+     * Met à jour la barre de progression
+     * @method updateProgressBar
+     * @param {HTMLElement} progressBar - La barre de progression
+     * @param {HTMLElement} info - L'élément d'information
+     * @param {number} progress - La progression actuelle
+     * @param {number} size - La taille totale
+     * @param {string} text - Le texte à afficher
+     * @returns {void}
+     */
     updateProgressBar(progressBar, info, progress, size, text) {
         progressBar.style.display = "block";
         info.innerHTML = `${text} ${((progress / size) * 100).toFixed(0)}%`;
@@ -170,6 +267,12 @@ class Home {
         progressBar.max = size;
     }
 
+    /**
+     * Formate un temps en secondes en une chaîne lisible
+     * @method formatTime
+     * @param {number} time - Le temps en secondes
+     * @returns {string} Le temps formaté
+     */
     formatTime(time) {
         const hours = Math.floor(time / 3600);
         const minutes = Math.floor((time - hours * 3600) / 60);
@@ -177,6 +280,16 @@ class Home {
         return `${hours}h ${minutes}m ${seconds}s`;
     }
 
+    /**
+     * Gère les données du lancement
+     * @method handleLaunchData
+     * @param {Object} e - Les données du lancement
+     * @param {HTMLElement} info - L'élément d'information
+     * @param {HTMLElement} progressBar - La barre de progression
+     * @param {HTMLElement} playBtn - Le bouton de jeu
+     * @param {Object} launcherSettings - Les paramètres du launcher
+     * @returns {void}
+     */
     handleLaunchData(e, info, progressBar, playBtn, launcherSettings) {
         new logger('Minecraft', '#36b030');
         if (launcherSettings.launcher.close === 'close-launcher') ipcRenderer.send("main-window-hide");
@@ -186,36 +299,72 @@ class Home {
         console.log(e);
     }
 
+    /**
+     * Gère la fermeture du lancement
+     * @method handleLaunchClose
+     * @param {number} code - Le code de sortie
+     * @param {HTMLElement} info - L'élément d'information
+     * @param {HTMLElement} progressBar - La barre de progression
+     * @param {HTMLElement} playBtn - Le bouton de jeu
+     * @param {Object} launcherSettings - Les paramètres du launcher
+     * @returns {void}
+     */
     handleLaunchClose(code, info, progressBar, playBtn, launcherSettings) {
         if (launcherSettings.launcher.close === 'close-launcher') ipcRenderer.send("main-window-show");
         progressBar.style.display = "none";
         info.style.display = "none";
-        playBtn.style.display = "block";
+        
+        // Reset sidebar play button
+        const playIcon = playBtn.querySelector('.play-icon');
+        const spinner = playBtn.querySelector('.loading-spinner');
+        playBtn.classList.remove('loading');
+        playBtn.disabled = false;
+        playIcon.style.display = 'block';
+        spinner.style.display = 'none';
+        
         info.innerHTML = t('verification');
         new logger('Launcher', '#7289da');
         console.log('Close');
     }
 
+    /**
+     * Initialise l'état du serveur
+     * @async
+     * @method initStatusServer
+     * @returns {Promise<void>}
+     */
     async initStatusServer() {
-        const nameServer = document.querySelector('.server-text .name');
-        const serverMs = document.querySelector('.server-text .desc');
-        const playersConnected = document.querySelector('.etat-text .text');
-        const online = document.querySelector(".etat-text .online");
-        const serverPing = await new Status(this.config.status.ip, this.config.status.port).getStatus();
+        const statusText = document.getElementById('server-status');
+        const playersCount = document.getElementById('players-count');
+        const onlineIndicator = document.querySelector('.online-indicator');
 
-        if (!serverPing.error) {
-            nameServer.textContent = this.config.status.nameServer;
-            serverMs.innerHTML = `<span class="green">${t('server_online')}</span> - ${serverPing.ms}${t('server_ping')}`;
-            online.classList.toggle("off");
-            playersConnected.textContent = serverPing.playersConnect;
-        } else {
-            nameServer.textContent = t('server_unavailable');
-            serverMs.innerHTML = `<span class="red">${t('server_closed')}</span>`;
+        try {
+            const serverPing = await new Status(this.config.status.ip, this.config.status.port).getStatus();
+
+            if (!serverPing.error) {
+                statusText.textContent = t('server_online');
+                onlineIndicator.classList.remove('offline');
+                onlineIndicator.classList.add('online');
+                playersCount.textContent = serverPing.playersConnect;
+            } else {
+                throw new Error('Ping error');
+            }
+        } catch (error) {
+            statusText.textContent = t('offline');
+            onlineIndicator.classList.remove('online');
+            onlineIndicator.classList.add('offline');
+            playersCount.textContent = '0';
         }
     }
 
-    async initVideo() {
-        const videoContainer = document.querySelector('.ytb');
+
+    /**
+     * Initialise la vidéo YouTube
+     * @method initVideo
+     * @returns {void}
+     */
+    initVideo() {
+        const videoContainer = document.querySelector('.video-section');
         if (!this.config.video_activate) {
             videoContainer.style.display = 'none';
             return;
@@ -227,14 +376,14 @@ class Home {
 
         if (videoType === 'short') {
             youtubeEmbedUrl = `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&playsinline=1`;
-        } else if (videoType === 'video') {
+        } else if (videoType === 'normal') {
             youtubeEmbedUrl = `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`;
         } else {
             console.error('Invalid video type specified in the configuration.');
             return;
         }
 
-        const youtubeThumbnailUrl = `https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`;
+        const youtubeThumbnailUrl = `https://img.youtube.com/vi/${youtubeVideoId}/0.jpg`;
         const videoThumbnail = videoContainer.querySelector('.youtube-thumbnail');
         const thumbnailImg = videoThumbnail.querySelector('.thumbnail-img');
         const playButton = videoThumbnail.querySelector('.ytb-play-btn');
@@ -250,103 +399,186 @@ class Home {
         }
     }
 
-    async initAdvert() {
-        const advertBanner = document.querySelector('.advert-banner');
-        if (this.config.alert_activate) {
-            const message = this.config.alert_msg;
-            const firstParagraph = message.split('</p>')[0] + '</p>';
-            const scrollingText = document.createElement('div');
-            scrollingText.classList.add('scrolling-text');
-            scrollingText.innerHTML = `${firstParagraph}`;
-            advertBanner.innerHTML = '';
-            advertBanner.appendChild(scrollingText);
-            scrollingText.classList.toggle('no-scroll', !this.config.alert_scroll);
-            advertBanner.style.display = 'block';
-        } else {
-            advertBanner.style.display = 'none';
-        }
-    }
-
+    /**
+     * Initialise les boutons du panneau
+     * @method initBtn
+     * @returns {void}
+     */
     initBtn() {
-        document.querySelector('.settings-btn').addEventListener('click', () => {
-            changePanel('settings');
-        });
+        document.querySelector('.settings-btn').addEventListener('click', () => changePanel('settings'));
+        document.querySelector('.login-btn').addEventListener('click', () => changePanel('login'));
     }
 
+    /**
+     * Convertit une date en format lisible
+     * @async
+     * @method getDate
+     * @param {string} e - La date à convertir
+     * @returns {Promise<Object>} La date formatée
+     */
     async getDate(e) {
         const date = new Date(e);
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const day = date.getDate();
-        const months = [
-            t('january'), t('february'), t('march'), t('april'), t('may'), t('june'),
-            t('july'), t('august'), t('september'), t('october'), t('november'), t('december')
-        ];
-        return { year, month: months[month], day };
+        return {
+            day: date.getDate(),
+            month: MONTHS[date.getMonth()]
+        };
     }
 
+    /**
+     * Vérifie les mods avant le lancement
+     * @async
+     * @method verifyModsBeforeLaunch
+     * @returns {Promise<void>}
+     */
     async verifyModsBeforeLaunch() {
-        const playButton = document.querySelector('.play-btn');
-        playButton.addEventListener('click', async () => {
-            const modsDir = path.join(dataDirectory, process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`, 'mods');
-            const launcherConfigDir = path.join(dataDirectory, process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`, 'launcher_config');
-            const modsConfigFile = path.join(launcherConfigDir, 'mods_config.json');
+        const modsListElement = document.querySelector('.mods-list');
+        if (!modsListElement) return;
 
-            let modsConfig;
-            try {
-                modsConfig = JSON.parse(fs.readFileSync(modsConfigFile));
-            } catch (error) {
-                console.error("Failed to read mods config file:", error);
-                return;
-            }
+        const modsDirectory = path.join(dataDirectory, process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`, 'mods');
+        if (!fs.existsSync(modsDirectory)) {
+            this.displayEmptyModsMessage(modsListElement);
+            return;
+        }
 
-            for (const mod in modsConfig) {
-                const modFiles = fs.readdirSync(modsDir).filter(file => file.startsWith(mod) && (file.endsWith('.jar') || file.endsWith('.jar-disable')));
-                if (modFiles.length > 0) {
-                    const modFile = modFiles[0];
-                    const modFilePath = path.join(modsDir, modFile);
-                    const newModFilePath = modsConfig[mod] ? modFilePath.replace('.jar-disable', '.jar') : modFilePath.endsWith('.jar-disable') ? modFilePath : `${modFilePath}.disable`;
-                    if (modFilePath !== newModFilePath) {
-                        fs.renameSync(modFilePath, newModFilePath);
-                    }
-                }
-            }
-        });
-    }
+        const mods = fs.readdirSync(modsDirectory).filter(file => file.endsWith('.jar'));
+        if (mods.length === 0) {
+            this.displayEmptyModsMessage(modsListElement);
+            return;
+        }
 
-    displayEmptyModsMessage(modsListElement) {
-        const modElement = document.createElement('div');
-        modElement.innerHTML = `
-            <div class="mods-container-empty">
-              <h2>${t('optional_mods_not_downloaded')}</h2>
-            </div>`;
-        modsListElement.appendChild(modElement);
-    }
-
-    updateRole(account) {
-        if (this.config.role && account.user_info.role) {
-            const blockRole = document.createElement("div");
-            blockRole.innerHTML = `<div>${t('grade')}: ${account.user_info.role.name}</div>`;
-            document.querySelector('.player-role').appendChild(blockRole);
-        } else {
-            document.querySelector(".player-role").style.display = "none";
+        modsListElement.innerHTML = '';
+        for (const mod of mods) {
+            const modElement = document.createElement('div');
+            modElement.classList.add('mod-item');
+            modElement.textContent = mod;
+            modsListElement.appendChild(modElement);
         }
     }
 
+    /**
+     * Affiche un message lorsque aucun mod n'est trouvé
+     * @method displayEmptyModsMessage
+     * @param {HTMLElement} modsListElement - L'élément de liste des mods
+     * @returns {void}
+     */
+    displayEmptyModsMessage(modsListElement) {
+        modsListElement.innerHTML = '<div class="mod-item">Aucun mod trouvé</div>';
+    }
+
+    /**
+     * Met à jour l'affichage du rôle
+     * @method updateRole
+     * @param {Object} account - Les données du compte
+     * @returns {void}
+     */
+    updateRole(account) {
+        // Tooltip display
+        const tooltip = document.querySelector('.player-head .player-tooltip');
+        if (tooltip) {
+            const blockRole = document.createElement("div");
+            blockRole.classList.add("player-role");
+            blockRole.textContent = `${t('grade')}: ${account.user_info.role.name}`;
+            tooltip.appendChild(blockRole);
+        }
+
+        // Stylish grade display
+        this.updateStylishGradeDisplay(account);
+    }
+
+    /**
+     * Met à jour l'affichage stylé du grade
+     * @method updateStylishGradeDisplay
+     * @param {Object} account - Les données du compte
+     * @returns {void}
+     */
+    updateStylishGradeDisplay(account) {
+        const gradeDisplay = document.getElementById('grade-display');
+        const gradeBadge = gradeDisplay.querySelector('.grade-badge');
+        const gradeIcon = gradeBadge.querySelector('.grade-icon span');
+        const gradeName = gradeBadge.querySelector('.grade-name');
+        const gradeDescription = gradeBadge.querySelector('.grade-description');
+
+        if (!account.user_info || !account.user_info.role) return;
+
+        const roleName = account.user_info.role.name.toLowerCase();
+        const roleDisplayName = account.user_info.role.name;
+
+        // Remove all grade classes
+        gradeBadge.className = 'grade-badge';
+        
+        // Determine grade class and details
+        let gradeClass, iconText, description;
+        
+        switch (roleName) {
+            case 'admin':
+            case 'administrateur':
+                gradeClass = 'grade-admin';
+                iconText = '👑';
+                description = 'Administrateur du serveur';
+                break;
+            case 'moderator':
+            case 'modérateur':
+            case 'modo':
+                gradeClass = 'grade-moderator';
+                iconText = '🛡️';
+                description = 'Modérateur du serveur';
+                break;
+            case 'helper':
+            case 'aide':
+            case 'assistant':
+                gradeClass = 'grade-helper';
+                iconText = '🤝';
+                description = 'Assistant de la communauté';
+                break;
+            case 'vip':
+                gradeClass = 'grade-vip';
+                iconText = '⭐';
+                description = 'Membre VIP';
+                break;
+            case 'premium':
+                gradeClass = 'grade-premium';
+                iconText = '💎';
+                description = 'Membre Premium';
+                break;
+            default:
+                gradeClass = 'grade-player';
+                iconText = '👤';
+                description = 'Joueur';
+        }
+
+        // Apply styles and content
+        gradeBadge.classList.add(gradeClass);
+        gradeIcon.textContent = iconText;
+        gradeName.textContent = roleDisplayName;
+        gradeDescription.textContent = description;
+
+        // Show the grade display with animation
+        gradeDisplay.style.display = 'block';
+        setTimeout(() => {
+            gradeDisplay.style.opacity = '1';
+        }, 100);
+    }
+
+    /**
+     * Met à jour l'état du bouton de jeu en fonction de la whitelist
+     * @method updateWhitelist
+     * @param {Object} account - Les données du compte
+     * @returns {void}
+     */
     updateWhitelist(account) {
-        const playBtn = document.querySelector(".play-btn");
+        const playBtn = document.querySelector(".play-btn-sidebar");
         if (this.config.whitelist_activate && 
             (!this.config.whitelist.includes(account.name) &&
              !this.config.whitelist_roles.includes(account.user_info.role.name))) {
             playBtn.style.backgroundColor = "#696969";
             playBtn.style.pointerEvents = "none";
             playBtn.style.boxShadow = "none";
-            playBtn.textContent = t('unavailable');
+            playBtn.classList.add('disabled');
         } else {
             playBtn.style.backgroundColor = "#00bd7a";
             playBtn.style.pointerEvents = "auto";
-            playBtn.style.boxShadow = "2px 2px 5px rgba(0, 0, 0, 0.3)";
-            playBtn.textContent = t('play');
+            playBtn.style.boxShadow = "0 0 10px rgba(0, 189, 122, 0.3)";
+            playBtn.classList.remove('disabled');
         }
     }
 }
