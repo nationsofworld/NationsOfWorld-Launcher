@@ -43,6 +43,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(electron.app.getAppPath(), 'src', 'launcher.html'));
     mainWindow.once('ready-to-show', () => {
         if (mainWindow) {
+            mainWindow.maximize(); // Maximiser la fenêtre au lancement
             mainWindow.show();
         }
     });

@@ -2,7 +2,7 @@
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-  --primary-color: #00bd7a;
+  --primary-color: #5D3E27;
   --text-color: #E1E1E1;
   --sidebar-width: 100px;
 }
@@ -100,12 +100,12 @@ body {
   width: 200px;
   height: 50px;
   border-radius: 10px;
-  background: #00bd7a;
+  background: #3D251A;
   border: none;
   color: #ffffff;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 5px #00bd7a;
+  box-shadow: 0 0 5px #3D251A;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -117,9 +117,9 @@ body {
 }
 
 .play-btn:hover {
-  background: #009c65;
+  background: #3D251A;
   transform: translateY(-2px);
-  box-shadow: 0 0 15px #00bd7a;
+  box-shadow: 0 0 15px #3D251A;
 }
 
 .play-btn.disabled {
@@ -147,7 +147,7 @@ body {
   width: 60px;
   height: 60px;
   border-radius: 15px;
-  background: #00bd7a;
+  background: #5D3E27;
   border: 2px solid var(--glass-border);
   color: #ffffff;
   font-size: 28px;
@@ -157,15 +157,15 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 0 15px rgba(0, 189, 122, 0.4);
+  box-shadow: 0 0 15px #3D251A;
   margin: 0 auto;
 }
 
 .play-btn-sidebar:hover {
-  background: #009c65;
+  background: #3D251A;
   border-color: var(--primary-color);
   transform: scale(1.15);
-  box-shadow: 0 0 20px rgba(0, 189, 122, 0.6);
+  box-shadow: 0 0 20px #3D251A;
 }
 
 .play-btn-sidebar.disabled {
@@ -893,22 +893,34 @@ body {
   transform: scale(1.1); /* Slightly enlarge the button on hover */
 }
 
-/* Alert Banner Styles */
+/* Apocalyptic Alert Banner Styles */
 .advert-banner {
   position: fixed;
   top: 25px;
   left: calc(var(--sidebar-width) + 60px);
   right: 20px;
-  background: rgba(87, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 0, 0, 0.2);
-  border-radius: 10px;
-  padding: 10px 20px;
+  background: rgba(93, 62, 39, 0.9); /* #5D3E27 */
+  backdrop-filter: blur(12px) brightness(0.85) contrast(1.2);
+  -webkit-backdrop-filter: blur(12px) brightness(0.85) contrast(1.2);
+  border: 1px solid rgba(255, 80, 0, 0.3);
+  border-radius: 12px;
+  padding: 14px 24px;
   z-index: 2000;
   max-width: calc(100% - var(--sidebar-width) - 60px);
   overflow: hidden;
+  box-shadow: 0 0 20px rgba(255, 80, 0, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.4);
+  color: #F8EBD7;
+  font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  animation: flicker 2s infinite alternate;
 }
+
+@keyframes flicker {
+  0% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 0.9; filter: brightness(1.1); }
+  100% { opacity: 1; filter: brightness(0.95); }
+}
+
 
 .sidebar-middle {
   display: flex;
