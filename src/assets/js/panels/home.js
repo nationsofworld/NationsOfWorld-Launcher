@@ -1,3 +1,4 @@
+
 /**
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0/
  */
@@ -84,6 +85,7 @@ class Home {
         }
         this.setServerIcon();
     }
+
     async initAdvert() {
         const advertBanner = document.querySelector('.advert-banner');
         if (this.config.alert_activate) {
@@ -165,6 +167,9 @@ class Home {
             playIcon.style.display = 'none';
             spinner.style.display = 'block';
             
+            // Show bottom progress bar
+            this.showBottomProgressBar();
+            
             launch.Launch(opts);
 
             const launcherSettings = (await this.database.get('1234', 'launcher')).value;
@@ -238,12 +243,28 @@ class Home {
      * @returns {void}
      */
     setupLaunchListeners(launch, info, progressBar, playBtn, launcherSettings) {
-        launch.on('extract', extract => console.log(extract));
-        launch.on('progress', (progress, size) => this.updateProgressBar(progressBar, info, progress, size, t('download')));
-        launch.on('check', (progress, size) => this.updateProgressBar(progressBar, info, progress, size, t('verification')));
+        launch.on('extract', extract => {
+            console.log(extract);
+            this.updateBottomProgressBar(0, 100, 'Extraction des fichiers...', 'Décompression en cours');
+        });
+        launch.on('progress', (progress, size) => {
+            this.updateProgressBar(progressBar, info, progress, size, t('download'));
+            this.updateBottomProgressBar(progress, size, 'Téléchargement des fichiers...', this.formatSize(progress, size));
+        });
+        launch.on('check', (progress, size) => {
+            this.updateProgressBar(progressBar, info, progress, size, t('verification'));
+            this.updateBottomProgressBar(progress, size, 'Vérification des fichiers...', this.formatSize(progress, size));
+        });
         launch.on('estimated', time => console.log(this.formatTime(time)));
-        launch.on('speed', speed => console.log(`${(speed / 1067008).toFixed(2)} Mb/s`));
-        launch.on('patch', patch => info.innerHTML = t('patch_in_progress'));
+        launch.on('speed', speed => {
+            console.log(`${(speed / 1067008).toFixed(2)} Mb/s`);
+            const speedMbs = (speed / 1048576).toFixed(1);
+            this.updateBottomProgressBar(null, null, null, `${speedMbs} MB/s`);
+        });
+        launch.on('patch', patch => {
+            info.innerHTML = t('patch_in_progress');
+            this.updateBottomProgressBar(100, 100, 'Application du patch...', 'Finalisation en cours');
+        });
         launch.on('data', e => this.handleLaunchData(e, info, progressBar, playBtn, launcherSettings));
         launch.on('close', code => this.handleLaunchClose(code, info, progressBar, playBtn, launcherSettings));
         launch.on('error', err => console.log(err));
@@ -296,6 +317,15 @@ class Home {
         ipcRenderer.send('main-window-progress-reset');
         progressBar.style.display = "none";
         info.innerHTML = t('starting');
+        
+        // Update bottom progress bar for game starting
+        this.updateBottomProgressBar(100, 100, 'Lancement du jeu...', 'Démarrage en cours');
+        
+        // Hide bottom progress bar after a delay
+        setTimeout(() => {
+            this.hideBottomProgressBar();
+        }, 2000);
+        
         console.log(e);
     }
 
@@ -314,6 +344,9 @@ class Home {
         progressBar.style.display = "none";
         info.style.display = "none";
         
+        // Hide bottom progress bar
+        this.hideBottomProgressBar();
+        
         // Reset sidebar play button
         const playIcon = playBtn.querySelector('.play-icon');
         const spinner = playBtn.querySelector('.loading-spinner');
@@ -325,6 +358,73 @@ class Home {
         info.innerHTML = t('verification');
         new logger('Launcher', '#7289da');
         console.log('Close');
+    }
+
+    /**
+     * Affiche la barre de progression du bas
+     * @method showBottomProgressBar
+     * @returns {void}
+     */
+    showBottomProgressBar() {
+        const progressBar = document.getElementById('bottom-progress-bar');
+        progressBar.style.display = 'block';
+        progressBar.classList.remove('hiding');
+        progressBar.classList.add('active');
+    }
+
+    /**
+     * Masque la barre de progression du bas
+     * @method hideBottomProgressBar
+     * @returns {void}
+     */
+    hideBottomProgressBar() {
+        const progressBar = document.getElementById('bottom-progress-bar');
+        progressBar.classList.remove('active');
+        progressBar.classList.add('hiding');
+        setTimeout(() => {
+            progressBar.style.display = 'none';
+            progressBar.classList.remove('hiding');
+        }, 500);
+    }
+
+    /**
+     * Met à jour la barre de progression du bas
+     * @method updateBottomProgressBar
+     * @param {number} progress - La progression actuelle
+     * @param {number} total - Le total
+     * @param {string} title - Le titre
+     * @param {string} details - Les détails
+     * @returns {void}
+     */
+    updateBottomProgressBar(progress, total, title, details) {
+        const progressBar = document.getElementById('bottom-progress-bar');
+        if (progressBar.style.display === 'none') return;
+
+        const percentage = total > 0 ? Math.round((progress / total) * 100) : 0;
+        
+        document.getElementById('progress-title-bottom').textContent = title;
+        document.getElementById('progress-percentage-bottom').textContent = `${percentage}%`;
+        document.getElementById('progress-bar-fill-bottom').style.width = `${percentage}%`;
+        document.getElementById('progress-details-bottom').textContent = details;
+    }
+
+    /**
+     * Formate la taille des fichiers
+     * @method formatSize
+     * @param {number} progress - La progression actuelle
+     * @param {number} total - Le total
+     * @returns {string} La taille formatée
+     */
+    formatSize(progress, total) {
+        const formatBytes = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        };
+        
+        return `${formatBytes(progress)} / ${formatBytes(total)}`;
     }
 
     /**
@@ -356,7 +456,6 @@ class Home {
             playersCount.textContent = '0';
         }
     }
-
 
     /**
      * Initialise la vidéo YouTube
@@ -472,7 +571,6 @@ class Home {
      * @returns {void}
      */
     updateRole(account) {
-        // Tooltip display
         const tooltip = document.querySelector('.player-head .player-tooltip');
         if (tooltip) {
             const blockRole = document.createElement("div");
@@ -481,7 +579,6 @@ class Home {
             tooltip.appendChild(blockRole);
         }
 
-        // Stylish grade display
         this.updateStylishGradeDisplay(account);
     }
 
